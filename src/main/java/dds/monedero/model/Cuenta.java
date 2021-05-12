@@ -11,16 +11,16 @@ import java.util.List;
 
 public class Cuenta {
 
-  private double saldo = 0;
+  private double saldo;
   private List<Movimiento> movimientos = new ArrayList<>();
 
   public Cuenta() {
     saldo = 0;
   }
 
-  public Cuenta(double montoInicial) {
+  /*public Cuenta(double montoInicial) {
     saldo = montoInicial;
-  }
+  }*/
 
   public void setMovimientos(List<Movimiento> movimientos) {
     this.movimientos = movimientos;
@@ -31,11 +31,11 @@ public class Cuenta {
       throw new MontoNegativoException(cuanto + ": el monto a ingresar debe ser un valor positivo");
     }
 
-    if (getMovimientos().stream().filter(movimiento -> movimiento.isDeposito()).count() >= 3) {
+    if (movimientos.stream().filter(Movimiento::isEsDeposito).count() >= 3) {
       throw new MaximaCantidadDepositosException("Ya excedio los " + 3 + " depositos diarios");
     }
 
-    new Movimiento(LocalDate.now(), cuanto, true).agregateA(this);
+    this.agregarMovimiento(LocalDate.now(), cuanto, true);
   }
 
   public void sacar(double cuanto) {
@@ -51,24 +51,32 @@ public class Cuenta {
       throw new MaximoExtraccionDiarioException("No puede extraer mas de $ " + 1000
           + " diarios, límite: " + limite);
     }
-    new Movimiento(LocalDate.now(), cuanto, false).agregateA(this);
+    this.agregarMovimiento(LocalDate.now(), cuanto, false);
+
+
   }
 
   public void agregarMovimiento(LocalDate fecha, double cuanto, boolean esDeposito) {
     Movimiento movimiento = new Movimiento(fecha, cuanto, esDeposito);
     movimientos.add(movimiento);
+    this.setSaldo(this.calcularNuevoSaldo(movimiento));
   }
 
+  public double calcularNuevoSaldo(Movimiento movimiento){
+    if(movimiento.isEsDeposito())
+      return this.getSaldo() + movimiento.getMonto();
+    else
+      return this.getSaldo() - movimiento.getMonto();
+  }
+
+
   public double getMontoExtraidoA(LocalDate fecha) {
-    return getMovimientos().stream()
-        .filter(movimiento -> !movimiento.isDeposito() && movimiento.getFecha().equals(fecha))
+    return movimientos.stream()
+        .filter(movimiento -> !movimiento.fueExtraido(fecha))
         .mapToDouble(Movimiento::getMonto)
         .sum();
   }
 
-  public List<Movimiento> getMovimientos() {
-    return movimientos;
-  }
 
   public double getSaldo() {
     return saldo;
